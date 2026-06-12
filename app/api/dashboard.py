@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.db.database import get_case, get_case_by_reference
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 @router.get("/{case_id}")
 def get_case_dashboard(case_id: str):
