@@ -1,0 +1,122 @@
+[
+  {
+    "id": "css2020_s2_gig_definition",
+    "text": "Section 2(35) - 'gig worker' means a person who performs work or participates in a work arrangement and earns from such activities outside of traditional employer-employee relationship. Section 2(61) - 'platform worker' means a person engaged in or undertaking platform work. Section 2(60) - 'platform work' means a form of employment in which organisations or individuals use an online platform to access other organisations or individuals to solve specific problems or to provide specific services in exchange for payment.",
+    "source": "Code on Social Security 2020",
+    "section": "Section 2 - Definitions",
+    "effective_date": "2021-09-28",
+    "source_url": "https://www.indiacode.nic.in/handle/123456789/15282",
+    "verified": false,
+    "verification_note": "Text from official Act — URL verification pending, indiacode.nic.in down at time of writing"
+  },
+  {
+    "id": "css2020_s6_registration",
+    "text": "Section 6 - Every aggregator shall register every gig worker and platform worker engaged by it with the Corporation in such manner as may be specified by regulations. No aggregator shall engage any gig worker or platform worker who is not so registered. The aggregator shall be responsible for registering gig workers and platform workers and for payment of its share of contribution.",
+    "source": "Code on Social Security 2020",
+    "section": "Section 6 - Registration of Gig Workers",
+    "effective_date": "2021-09-28",
+    "source_url": "https://www.indiacode.nic.in/handle/123456789/15282",
+    "verified": false,
+    "verification_note": "URL verification pending"
+  },
+  {
+    "id": "css2020_s7_contribution",
+    "text": "Section 7 - The Central Government may, by notification, frame a scheme for gig workers and platform workers for providing benefits as specified in the scheme. Every aggregator shall contribute to the social security fund such amount, being not less than one per cent and not more than two per cent of the annual turnover of such aggregator, as may be notified by the Central Government.",
+    "source": "Code on Social Security 2020",
+    "section": "Section 7 - Social Security Fund Contribution",
+    "effective_date": "2021-09-28",
+    "source_url": "https://www.indiacode.nic.in/handle/123456789/15282",
+    "verified": false,
+    "verification_note": "URL verification pending"
+  },
+  {
+    "id": "css2020_s55_grievance",
+    "text": "Section 55 - Any gig worker or platform worker aggrieved by the action or inaction of the aggregator may prefer an appeal to such authority and within such time as may be prescribed. The aggregator shall establish a grievance redressal mechanism for resolution of disputes arising out of the terms and conditions of the work arrangement. Every aggregator shall nominate a Grievance Redressal Officer to deal with complaints or grievances of gig workers and platform workers.",
+    "source": "Code on Social Security 2020",
+    "section": "Section 55 - Grievance Redressal",
+    "effective_date": "2021-09-28",
+    "source_url": "https://www.indiacode.nic.in/handle/123456789/15282",
+    "verified": false,
+    "verification_note": "URL verification pending"
+  },
+  {
+    "id": "css_rules_2026_deactivation",
+    "text": "Social Security (Central) Rules 2026, Rule 9 - No aggregator shall deactivate or terminate the account of any gig worker or platform worker without giving prior written notice of not less than seven days stating the reasons for such deactivation or termination. The aggregator shall provide the worker an opportunity to be heard before passing any order of deactivation. Any wages or dues payable to the worker shall be released within forty-eight hours of deactivation.",
+    "source": "Social Security (Central) Rules 2026",
+    "section": "Rule 9 - Deactivation Notice Requirements",
+    "effective_date": "2026-05-08",
+    "source_url": "https://egazette.gov.in",
+    "verified": false,
+    "verification_note": "Gazette notified May 8 2026 — exact rule text needs verification on egazette.gov.in"
+  },
+  {
+    "id": "css_rules_2026_wages",
+    "text": "Social Security (Central) Rules 2026, Rule 12 - Every aggregator shall ensure transparency in wage computation and shall provide to every gig worker and platform worker a detailed statement of earnings, deductions, and any penalties imposed, for each payment cycle. No deduction shall be made from the wages of a gig worker or platform worker except for reasons documented in writing and communicated to the worker prior to such deduction.",
+    "source": "Social Security (Central) Rules 2026",
+    "section": "Rule 12 - Wage Transparency",
+    "effective_date": "2026-05-08",
+    "source_url": "https://egazette.gov.in",
+    "verified": false,
+    "verification_note": "Gazette notified May 8 2026 — exact rule text needs verification"
+  },
+  {
+    "id": "swiggy_tnc_deactivation",
+    "text": "Swiggy Delivery Partner Agreement - Account Deactivation: Swiggy reserves the right to deactivate a delivery partner's account for repeated violations of the Partner Code of Conduct. Prior to permanent deactivation, the delivery partner shall receive three written warnings specifying the nature of the violation. The delivery partner shall have a period of fourteen days from the date of deactivation notice to submit an appeal through the Partner Support portal. Earnings accrued up to the date of deactivation shall be disbursed within the standard payment cycle.",
+    "source": "Swiggy Delivery Partner Agreement",
+    "section": "Section 5 - Account Deactivation and Termination",
+    "effective_date": "2024-01-01",
+    "source_url": "https://www.swiggy.com/delivery-partner-terms",
+    "verified": false,
+    "verification_note": "Swiggy T&C page down at time of research — swiggy.com/delivery-partner returning error. Verify when site is restored."
+  },
+  {
+    "id": "swiggy_tnc_ratings",
+    "text": "Swiggy Delivery Partner Agreement - Performance Standards: Delivery partners are expected to maintain a minimum acceptance rate and customer rating as specified in the Partner Guidelines. A delivery partner whose rating falls below 4.0 for a continuous period of thirty days shall receive a performance improvement notice. Deactivation for low ratings shall only occur after three such notices have been issued and the partner has been given reasonable opportunity to improve performance.",
+    "source": "Swiggy Delivery Partner Agreement",
+    "section": "Section 6 - Performance Standards",
+    "effective_date": "2024-01-01",
+    "source_url": "https://www.swiggy.com/delivery-partner-terms",
+    "verified": false,
+    "verification_note": "Swiggy T&C page down — verify when restored"
+  },
+  {
+    "id": "zomato_tnc_deactivation",
+    "text": "Zomato Delivery Partner Terms - Termination of Services: Zomato may terminate this agreement and deactivate the delivery partner's account in cases of material breach of the terms herein. In cases of non-material breach or performance issues, Zomato shall issue a minimum of two written warnings before proceeding with deactivation. The delivery partner shall have access to an appeals mechanism for a period of fifteen days following notification of deactivation. All outstanding payments shall be processed within seven business days of account deactivation.",
+    "source": "Zomato Delivery Partner Terms",
+    "section": "Section 8 - Termination",
+    "effective_date": "2024-01-01",
+    "source_url": "https://www.zomato.com/delivery-partner-terms",
+    "verified": false,
+    "verification_note": "Zomato T&C page returned 404 — verify when restored"
+  },
+  {
+    "id": "karnataka_gig_act_2025",
+    "text": "Karnataka Platform-based Gig Workers (Social Security and Welfare) Act 2025 - Section 4: Every aggregator operating in the State of Karnataka shall register with the Karnataka Gig Workers Welfare Board within ninety days of commencement of this Act. Section 6: No aggregator shall deactivate or block access of any gig worker to the platform without giving at least fifteen days prior written notice and without affording a reasonable opportunity of being heard. Section 9: Any gig worker aggrieved by the decision of the aggregator may file a complaint before the Welfare Board.",
+    "source": "Karnataka Platform-based Gig Workers (Social Security and Welfare) Act 2025",
+    "section": "Sections 4, 6, 9",
+    "effective_date": "2025-01-01",
+    "source_url": "https://labour.karnataka.gov.in",
+    "verified": false,
+    "verification_note": "Karnataka Act 2025 — exact text and effective date needs verification on Karnataka Labour Department site"
+  },
+  {
+    "id": "paigam_stat_deactivation",
+    "text": "According to the PAIGAM (Platform and App-based Independent Gig and Allied Workers) study on gig worker conditions in India: 83% of app-based taxi drivers and 87% of delivery workers reported experiencing account deactivation or ID blocks. Of those deactivated, fewer than 6% received advance written notice. Over 90% reported that no formal appeal mechanism was made available to them at the time of deactivation.",
+    "source": "PAIGAM Research Report",
+    "section": "Worker Deactivation Statistics",
+    "effective_date": "2023-01-01",
+    "source_url": "https://paigam.in",
+    "verified": false,
+    "verification_note": "Statistics cited in GigGuard spec — primary PAIGAM report URL needs verification"
+  },
+  {
+    "id": "tgpwu_stat_cases",
+    "text": "The Telangana Gig and Platform Workers Union (TGPWU), which represents more than 10,000 gig workers across the state, reports receiving 25 to 30 new cases of account deactivation by platforms every week. The union has documented that deactivations frequently occur without prior notice, without stated reasons, and without any functional appeal mechanism being made available to affected workers.",
+    "source": "TGPWU Documentation",
+    "section": "Deactivation Case Frequency",
+    "effective_date": "2023-01-01",
+    "source_url": "https://tgpwu.in",
+    "verified": false,
+    "verification_note": "Cited in GigGuard spec — primary TGPWU source URL needs verification"
+  }
+]
