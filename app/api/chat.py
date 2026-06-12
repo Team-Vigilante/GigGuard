@@ -66,8 +66,15 @@ async def extract_and_generate(request: ChatRequest):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to extract data: {str(e)}")
 
+    import traceback
     # 3. Generate unique case_id
     case_id = f"GG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+    try:
+        amt_str = str(extracted.get("amount_withheld", "0")).replace("Rs.", "").replace("rs", "").replace(",", "").strip()
+        amount_withheld = float(amt_str)
+    except Exception:
+        amount_withheld = 0.0
 
     # 4. Build case_data matching SAMPLE_CASE structure
     case_data = {
@@ -83,7 +90,7 @@ async def extract_and_generate(request: ChatRequest):
             "event_type": extracted.get("event_type", "Unknown"),
             "event_date": extracted.get("event_date", "Unknown"),
             "reason_given": extracted.get("reason_given", "None"),
-            "amount_withheld": extracted.get("amount_withheld", "0"),
+            "amount_withheld": amount_withheld,
             "notice_provided": True if str(extracted.get("notice_provided")).lower() == "yes" else False,
             "notice_period_days": 0,
             "earnings_blocked": True,
@@ -109,14 +116,14 @@ async def extract_and_generate(request: ChatRequest):
                 f"FACTS:\n"
                 f"1. Event Date: {extracted.get('event_date', 'Unknown')}\n"
                 f"2. Reason Given: {extracted.get('reason_given', 'Unknown')}\n"
-                f"3. Amount Withheld: Rs. {extracted.get('amount_withheld', '0')}\n"
+                f"3. Amount Withheld: Rs. {amount_withheld}\n"
                 f"4. Notice Provided: {extracted.get('notice_provided', 'Unknown')}\n\n"
                 f"RELIEF SOUGHT:\n"
                 f"Immediate resolution and release of withheld amounts.\n"
             ),
             "hindi_letter": "",
             "demands": [
-                f"Release of withheld earnings amounting to Rs. {extracted.get('amount_withheld', '0')}."
+                f"Release of withheld earnings amounting to Rs. {amount_withheld}."
             ],
             "escalation_warning": "Failure to respond will result in escalation.",
         }
@@ -127,6 +134,7 @@ async def extract_and_generate(request: ChatRequest):
     try:
         generate_grievance_pdf(case_data, output_path)
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
 
     # 6. Return response
