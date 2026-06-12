@@ -1,3 +1,8 @@
+import json
+import os
+from typing import Dict, Any
+from anthropic import Anthropic
+
 # Agent 3 — Drafter System Prompt
 # Owner: Person 2 (AI Agents + Prompt Engineering)
 # Used by: drafter_node() function
@@ -137,3 +142,66 @@ MANDATORY_DISCLAIMER = (
     "policy documents. For complex cases, consult a "
     "legal professional."
 )
+
+def drafter_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Agent 3: Drafter Node
+    Generates a formal grievance letter in Hindi and English based on the
+    worker's complaint and legal analysis.
+    
+    Args:
+        state: The current LangGraph state (GigGuardState), which must contain 
+               'parsed_data' and 'legal_analysis'.
+               
+    Returns:
+        A dict containing the 'grievance_letter' to update the state.
+    """
+    parsed_data = state.get("parsed_data", {})
+    legal_analysis = state.get("legal_analysis", {})
+    case_strength = legal_analysis.get("case_strength", "INSUFFICIENT_BASIS")
+    
+    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    
+    user_prompt = f"""
+    Please generate the grievance letter based on the following case facts and legal analysis.
+    
+    CASE FACTS:
+    {json.dumps(parsed_data, indent=2)}
+    
+    LEGAL ANALYSIS:
+    {json.dumps(legal_analysis, indent=2)}
+    
+    CASE STRENGTH: {case_strength}
+    """
+    
+    response = client.messages.create(
+        model="claude-3-5-sonnet-latest",
+        max_tokens=2048,
+        temperature=0.0,
+        system=DRAFTER_SYSTEM_PROMPT,
+        messages=[
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+    
+    try:
+        response_text = response.content[0].text
+        start_idx = response_text.find('{')
+        end_idx = response_text.rfind('}') + 1
+        json_str = response_text[start_idx:end_idx]
+        
+        draft_result = json.loads(json_str)
+        
+        # Enforce the hardcoded disclaimer - never let the model change this
+        draft_result["disclaimer"] = MANDATORY_DISCLAIMER
+        
+    except (json.JSONDecodeError, IndexError, AttributeError) as e:
+        draft_result = {
+            "hindi_letter": "Error generating letter.",
+            "english_letter": f"Error generating letter: {str(e)}",
+            "demands": [],
+            "escalation_warning": "",
+            "disclaimer": MANDATORY_DISCLAIMER
+        }
+        
+    return {"grievance_letter": draft_result}
