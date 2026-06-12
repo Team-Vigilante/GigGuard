@@ -21,6 +21,7 @@ app.include_router(health_router)
 app.include_router(webhook_router)
 app.include_router(dashboard_router)
 app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")
+app.mount("/pdf", StaticFiles(directory="output"), name="pdf")
 
 if __name__ == "__main__":
     import uvicorn
