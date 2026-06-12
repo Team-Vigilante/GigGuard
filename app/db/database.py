@@ -304,5 +304,25 @@ def get_case(case_id: str) -> dict | None:
         conn.close()
 
 
+def get_case_by_reference(reference_id: str) -> dict | None:
+    """
+    Retrieve a single case by its reference_id.
+
+    Args:
+        reference_id: Reference ID of the case (e.g. GG-2026-001).
+
+    Returns:
+        Case dict, or None if not found.
+    """
+    conn = _get_connection()
+    try:
+        row = conn.execute(
+            "SELECT * FROM cases WHERE reference_id = ?", (reference_id,)
+        ).fetchone()
+        return _row_to_dict(row)
+    finally:
+        conn.close()
+
+
 # ── Auto-initialize DB on import ──────────────────────────────────────────────
 _init_db()
