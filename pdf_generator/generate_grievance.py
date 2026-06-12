@@ -235,7 +235,7 @@ def generate_grievance_pdf(case_data: dict, output_path: str) -> str:
         ["Reason Given", _safe(parsed.get("reason_given"))],
         [
             "Amount Withheld",
-            f"₹{parsed['amount_withheld']:,}"
+            f"Rs. {parsed['amount_withheld']:,}"
             if parsed.get("amount_withheld") is not None
             else "—",
         ],

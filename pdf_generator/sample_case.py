@@ -95,7 +95,7 @@ SAMPLE_CASE: dict = {
             "3. The reason cited was 'Customer rating fell below minimum "
             "threshold,' however no specific incidents were communicated "
             "to the complainant.\n"
-            "4. An amount of ₹1,840 in earned wages has been withheld "
+            "4. An amount of Rs. 1,840 in earned wages has been withheld "
             "and remains unpaid.\n"
             "5. No opportunity for appeal or review was provided to the "
             "complainant before or after the deactivation.\n\n"
@@ -115,7 +115,7 @@ SAMPLE_CASE: dict = {
             "RELIEF SOUGHT:\n"
             "1. Immediate reinstatement of the complainant's Swiggy delivery "
             "partner account.\n"
-            "2. Release of all withheld earnings amounting to ₹1,840.\n"
+            "2. Release of all withheld earnings amounting to Rs. 1,840.\n"
             "3. Written explanation of the specific grounds for deactivation.\n"
             "4. Response within 15 days of receipt of this notice.\n\n"
             "ESCALATION WARNING:\n"
@@ -133,7 +133,7 @@ SAMPLE_CASE: dict = {
 
         "demands": [
             "Immediate reinstatement of the complainant's Swiggy delivery partner account.",
-            "Release of all withheld earnings amounting to ₹1,840.",
+            "Release of all withheld earnings amounting to Rs. 1,840.",
             "Written explanation of the specific grounds for deactivation.",
             "Response within 15 days of receipt of this notice.",
         ],
