@@ -17,17 +17,17 @@ SAMPLE_CASE: dict = {
 
     "worker": {
         "name": "Ramesh Kumar",
-        "phone": "+91-9876543210",
+        "phone": "+919876544821",
         "platform": "Swiggy",
         "city": "Bengaluru",
         "worker_id": "SWG-BLR-228194",
     },
 
     "parsed_data": {
-        "event_type": "account_deactivation",
+        "event_type": "Account Deactivation",
         "event_date": "2026-06-07",
         "reason_given": "Customer rating fell below minimum threshold",
-        "amount_withheld": 1840,
+        "amount_withheld": 1840.0,
         "notice_provided": False,
         "notice_period_days": 0,
         "earnings_blocked": True,

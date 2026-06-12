@@ -388,6 +388,6 @@ if __name__ == "__main__":
     from pdf_generator.sample_case import SAMPLE_CASE
 
     output_dir = os.path.join(os.path.dirname(__file__), "..", "output")
-    output_file = os.path.join(output_dir, "GG-2026-001_grievance.pdf")
+    output_file = os.path.join(output_dir, "GG-2026-001.pdf")
 
     generate_grievance_pdf(SAMPLE_CASE, output_file)
