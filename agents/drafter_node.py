@@ -1,7 +1,7 @@
 import json
 import os
 from typing import Dict, Any
-from anthropic import Anthropic
+from agents.llm_utils import call_llm
 
 # Agent 3 — Drafter System Prompt
 # Owner: Person 2 (AI Agents + Prompt Engineering)
@@ -160,8 +160,6 @@ def drafter_node(state: Dict[str, Any]) -> Dict[str, Any]:
     legal_analysis = state.get("legal_analysis", {})
     case_strength = legal_analysis.get("case_strength", "INSUFFICIENT_BASIS")
     
-    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    
     user_prompt = f"""
     Please generate the grievance letter based on the following case facts and legal analysis.
     
@@ -174,23 +172,19 @@ def drafter_node(state: Dict[str, Any]) -> Dict[str, Any]:
     CASE STRENGTH: {case_strength}
     """
     
-    response = client.messages.create(
-        model="claude-3-5-sonnet-latest",
+    response_text = call_llm(
+        system_prompt=DRAFTER_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
         max_tokens=2048,
-        temperature=0.0,
-        system=DRAFTER_SYSTEM_PROMPT,
-        messages=[
-            {"role": "user", "content": user_prompt}
-        ]
+        temperature=0.0
     )
     
     try:
-        response_text = response.content[0].text
         start_idx = response_text.find('{')
         end_idx = response_text.rfind('}') + 1
         json_str = response_text[start_idx:end_idx]
         
-        draft_result = json.loads(json_str)
+        draft_result = json.loads(json_str, strict=False)
         
         # Enforce the hardcoded disclaimer - never let the model change this
         draft_result["disclaimer"] = MANDATORY_DISCLAIMER

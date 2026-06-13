@@ -1,7 +1,7 @@
 import json
 import os
 from typing import Dict, Any
-from anthropic import Anthropic
+from agents.llm_utils import call_llm
 from agents.chromadb_query import build_case_facts_string, query_knowledge_base
 
 
@@ -121,33 +121,23 @@ def researcher_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "{case_facts}", case_facts_str
     )
 
-    # 5. Call Claude with the grounded prompt
-    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-
-    response = client.messages.create(
-        model="claude-3-5-sonnet-latest",
+    response_text = call_llm(
+        system_prompt=full_prompt,
+        user_prompt=(
+            "Analyze the case facts against the retrieved legal "
+            "context. Follow the grounding rules exactly. Return "
+            "only the JSON output."
+        ),
         max_tokens=1500,
-        temperature=0.0,
-        system=full_prompt,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    "Analyze the case facts against the retrieved legal "
-                    "context. Follow the grounding rules exactly. Return "
-                    "only the JSON output."
-                )
-            }
-        ]
+        temperature=0.0
     )
 
     try:
-        response_text = response.content[0].text
         start_idx = response_text.find('{')
         end_idx = response_text.rfind('}') + 1
         json_str = response_text[start_idx:end_idx]
 
-        legal_analysis = json.loads(json_str)
+        legal_analysis = json.loads(json_str, strict=False)
 
     except (json.JSONDecodeError, IndexError, AttributeError) as e:
         legal_analysis = {

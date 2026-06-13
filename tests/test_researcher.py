@@ -134,8 +134,8 @@ class TestResearcherLive(unittest.TestCase):
     """Live API stress tests — 5 scenarios from Phase 5 spec."""
 
     def setUp(self):
-        if not os.environ.get("ANTHROPIC_API_KEY"):
-            self.skipTest("ANTHROPIC_API_KEY is not set.")
+        if not os.environ.get("ANTHROPIC_API_KEY") and not os.environ.get("GROQ_API_KEY"):
+            self.skipTest("No API key set (need Anthropic or Groq).")
 
     def _run_researcher(self, parsed_data: dict) -> dict:
         """Helper to run researcher_node and return legal_analysis."""

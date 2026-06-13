@@ -114,28 +114,25 @@ TEST_INPUTS = {
 
 
 def _call_parser(message: str) -> dict:
-    """Helper: call Claude with the parser prompt and return parsed JSON."""
-    from anthropic import Anthropic
-    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    response = client.messages.create(
-        model="claude-3-5-sonnet-latest",
+    """Helper: call LLM with the parser prompt and return parsed JSON."""
+    from agents.llm_utils import call_llm
+    text = call_llm(
+        system_prompt=PARSER_SYSTEM_PROMPT,
+        user_prompt=message,
         max_tokens=1024,
-        temperature=0.0,
-        system=PARSER_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": message}]
+        temperature=0.0
     )
-    text = response.content[0].text
     start = text.find('{')
     end = text.rfind('}') + 1
-    return json.loads(text[start:end])
+    return json.loads(text[start:end], strict=False)
 
 
 class TestParserLive(unittest.TestCase):
     """Live API stress tests — 5 scenarios from Phase 5 spec."""
 
     def setUp(self):
-        if not os.environ.get("ANTHROPIC_API_KEY"):
-            self.skipTest("ANTHROPIC_API_KEY is not set.")
+        if not os.environ.get("ANTHROPIC_API_KEY") and not os.environ.get("GROQ_API_KEY"):
+            self.skipTest("No API key set (need Anthropic or Groq).")
 
     # ── Test 1: Clean English ──────────────────────────
     def test_1_clean_english_description(self):
