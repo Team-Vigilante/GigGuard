@@ -219,3 +219,5 @@ __marimo__/
 gigguard.db/
 *.db
 app/db/gigguard.db
+gigguard.db/
+*.db
