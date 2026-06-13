@@ -6,7 +6,6 @@ router = APIRouter()
 
 
 def _mask_phone(phone: str) -> str:
-    """Mask middle digits of phone number for privacy."""
     clean = phone.replace("whatsapp:", "")
     if len(clean) >= 6:
         return clean[:3] + "****" + clean[-3:]
@@ -14,7 +13,6 @@ def _mask_phone(phone: str) -> str:
 
 
 def _days_pending(created_at: str) -> int:
-    """Calculate days since case was created."""
     try:
         created = datetime.fromisoformat(created_at)
         now = datetime.now(timezone.utc)
@@ -24,7 +22,6 @@ def _days_pending(created_at: str) -> int:
 
 
 def _build_timeline(case: dict) -> list:
-    """Build timeline of case events."""
     timeline = []
     if case.get("created_at"):
         timeline.append({
@@ -48,7 +45,6 @@ def _build_timeline(case: dict) -> list:
 
 
 def _next_action(case: dict) -> str:
-    """Determine next action based on case status."""
     status = case.get("case_status", "open")
     if status == "open":
         return "Awaiting platform response (7 days)"
@@ -60,7 +56,6 @@ def _next_action(case: dict) -> str:
 
 
 def _expected_response_date(case: dict) -> str:
-    """Calculate expected response date."""
     try:
         created = datetime.fromisoformat(case["created_at"])
         status = case.get("case_status", "open")
@@ -79,23 +74,15 @@ def _expected_response_date(case: dict) -> str:
 
 @router.get("/dashboard/{case_id}")
 async def get_dashboard(case_id: str):
-    """
-    Returns case status and timeline for a given case_id.
-    Used by Person 4's frontend dashboard.
-    """
-    # Find the case across all sessions
-    # We search by case_id directly using get_case
     from app.db.database import get_case
     case = get_case(case_id)
 
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    # Get session for worker phone
     session_id = case.get("session_id")
     session = None
     if session_id:
-        # Find session by id — use a direct DB lookup
         import sqlite3
         from pathlib import Path
         db_path = Path(__file__).parent.parent / "db" / "gigguard.db"
