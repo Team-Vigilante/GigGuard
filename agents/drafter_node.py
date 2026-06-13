@@ -84,7 +84,7 @@ format:
 
 7. LEGAL BASIS (only if case_strength != INSUFFICIENT_BASIS)
    - For each violation in legal_analysis.violations:
-     "As per [law], [section]: [violation_description]"
+     "As per [source], [section]: [violation_description]"
    - Cite ONLY from legal_analysis.violations
    - If INSUFFICIENT_BASIS: replace this section with
      "This notice documents the incident for official record."
