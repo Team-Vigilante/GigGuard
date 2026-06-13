@@ -1,19 +1,10 @@
 from langgraph.graph import StateGraph, END
 from app.agents.state import GigGuardState
-
+from app.agents.parser import parser_node
 
 # ── Placeholder nodes ──────────────────────────────────────────
 # Each node receives the full state, does its work, and returns
 # an updated copy. For now they are all pass-through stubs.
-
-def parser_node(state: GigGuardState) -> GigGuardState:
-    """
-    Agent 1 — Parser (Person 1 owns this)
-    Will use Claude Vision to extract structured data from
-    screenshots or parse text input.
-    """
-    print(f"[parser_node] phone={state['phone']} | msg={state['message'][:50]}")
-    return state
 
 
 def researcher_node(state: GigGuardState) -> GigGuardState:
