@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GigGuard — Case Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #F7F8FA;
+    color: #2C2C2C;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: #1a1a2e;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header h1 {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .header span {
+    color: #1DB954;
+    font-size: 22px;
+  }
+  .header .subtitle {
+    color: #888;
+    font-size: 12px;
+    font-weight: 400;
+    margin-left: 4px;
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 860px;
+    margin: 36px auto;
+    padding: 0 24px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+
+  .card h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #888;
+    margin-bottom: 16px;
+  }
+
+  /* ── Case meta row ── */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .meta-item label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #999;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .meta-item span {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2C2C2C;
+  }
+
+  /* ── Status badge ── */
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge.open       { background: #E3F2FD; color: #1565C0; }
+  .badge.escalated  { background: #FFF3E0; color: #E65100; }
+  .badge.resolved   { background: #E8F5E9; color: #2E7D32; }
+  .badge.closed     { background: #F5F5F5; color: #666; }
+
+  /* ── KV table ── */
+  .kv-table { width: 100%; border-collapse: collapse; }
+  .kv-table tr:nth-child(odd) td { background: #FAFAFA; }
+  .kv-table td {
+    padding: 10px 12px;
+    font-size: 14px;
+    border-bottom: 1px solid #F0F0F0;
+  }
+  .kv-table td:first-child {
+    width: 38%;
+    color: #888;
+    font-weight: 500;
+    font-size: 13px;
+  }
+  .kv-table td:last-child { color: #2C2C2C; font-weight: 500; }
+
+  /* ── Timeline ── */
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 7px; top: 6px; bottom: 6px;
+    width: 2px;
+    background: #E0E0E0;
+  }
+  .tl-item {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .tl-item::before {
+    content: "";
+    position: absolute;
+    left: -20px;
+    top: 5px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #1DB954;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #1DB954;
+  }
+  .tl-item.pending::before { background: #E0E0E0; box-shadow: 0 0 0 2px #CCC; }
+  .tl-item .tl-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2C2C2C;
+  }
+  .tl-item .tl-date {
+    font-size: 12px;
+    color: #999;
+    margin-top: 2px;
+  }
+
+  /* ── Action button ── */
+  .btn-pdf {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 10px 22px;
+    background: #1a1a2e;
+    color: #fff;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: background 0.2s;
+  }
+  .btn-pdf:hover { background: #1DB954; }
+
+  /* ── Error / loading ── */
+  .state-msg {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+    font-size: 15px;
+  }
+
+  @media (max-width: 600px) {
+    .meta-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span>⚖</span>
+  <h1>GigGuard <span class="subtitle">Case Dashboard</span></h1>
+</div>
+
+<div class="container">
+  <div id="app"><p class="state-msg">Loading case...</p></div>
+</div>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────
+function maskPhone(phone) {
+  if (!phone) return "—";
+  const digits = phone.replace(/\D/g, "");
+  return "+91 XXXX XX " + digits.slice(-4);
+}
+
+function statusBadge(status) {
+  const map = {
+    open:      "open",
+    escalated: "escalated",
+    resolved:  "resolved",
+    closed:    "closed"
+  };
+  const cls   = map[status] || "open";
+  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Open";
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric"
+  });
+}
+
+function formatAmount(amt) {
+  if (amt == null) return "—";
+  return "₹" + Number(amt).toLocaleString("en-IN");
+}
+
+// ── Timeline builder from case data ──────────────────────────────
+function buildTimeline(c) {
+  const items = [];
+  if (c.created_at)  items.push({ label: "Case Filed",    date: formatDate(c.created_at), done: true });
+
+  // Escalated if status is escalated or resolved
+  const escalated = ["escalated","resolved"].includes(c.case_status);
+  items.push({ label: "Escalated to Authority", date: escalated ? "Day 7" : "Pending", done: escalated });
+
+  const resolved = c.case_status === "resolved";
+  items.push({ label: "Resolved", date: resolved ? formatDate(c.resolved_at) : "Pending", done: resolved });
+
+  return items.map(i => `
+    <div class="tl-item ${i.done ? "" : "pending"}">
+      <div class="tl-label">${i.label}</div>
+      <div class="tl-date">${i.date}</div>
+    </div>
+  `).join("");
+}
+
+// ── Next action ───────────────────────────────────────────────────
+function nextAction(c) {
+  if (c.case_status === "resolved") return { action: "Case resolved", date: "—" };
+  if (c.case_status === "escalated") return { action: "Awaiting authority response", date: "Within 21 days of filing" };
+  return { action: "Platform response window", date: "Within 15 days of filing" };
+}
+
+// ── Render ────────────────────────────────────────────────────────
+function render(c) {
+  const next = nextAction(c);
+
+  // Get session phone from outcome if available
+  const phone = (c.outcome && c.outcome.worker_phone) || null;
+
+  document.getElementById("app").innerHTML = `
+
+    <!-- Case Meta -->
+    <div class="card">
+      <h2>Case Overview</h2>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <label>Case ID</label>
+          <span>${c.reference_id || c.id.slice(0,8).toUpperCase()}</span>
+        </div>
+        <div class="meta-item">
+          <label>Platform</label>
+          <span>${c.platform || "—"}</span>
+        </div>
+        <div class="meta-item">
+          <label>Status</label>
+          ${statusBadge(c.case_status)}
+        </div>
+        <div class="meta-item" style="margin-top:16px">
+          <label>Worker Phone</label>
+          <span style="font-size:13px">${maskPhone(phone)}</span>
+        </div>
+        <div class="meta-item" style="margin-top:16px">
+          <label>Event Type</label>
+          <span style="font-size:13px">${c.event_type || "—"}</span>
+        </div>
+        <div class="meta-item" style="margin-top:16px">
+          <label>Amount Affected</label>
+          <span style="font-size:13px">${formatAmount(c.amount_affected)}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="card">
+      <h2>Case Timeline</h2>
+      <div class="timeline">
+        ${buildTimeline(c)}
+      </div>
+    </div>
+
+    <!-- Next Action -->
+    <div class="card">
+      <h2>Next Action</h2>
+      <table class="kv-table">
+        <tr><td>Action</td><td>${next.action}</td></tr>
+        <tr><td>Expected By</td><td>${next.date}</td></tr>
+        <tr><td>Filed On</td><td>${formatDate(c.created_at)}</td></tr>
+        <tr><td>Filing Channel</td><td>${c.filing_channel || "WhatsApp"}</td></tr>
+      </table>
+    </div>
+
+    <!-- Grievance Letter -->
+    <div class="card">
+      <h2>Documents</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:12px">
+        Grievance letter generated and ready for submission.
+      </p>
+      <a class="btn-pdf"
+         href="/pdf/GG-2026-001.pdf"
+         target="_blank">
+        ⬇ View Grievance Letter (PDF)
+      </a>
+    </div>
+
+  `;
+}
+
+// ── Fetch from API ────────────────────────────────────────────────
+async function loadCase() {
+  // Get case_id from URL: /dashboard?case=GG-2026-001
+  const params  = new URLSearchParams(window.location.search);
+  const caseId  = params.get("case") || "GG-2026-001";
+
+  try {
+    const res = await fetch(`/api/dashboard/${caseId}`);
+    if (!res.ok) throw new Error(`Case not found (${res.status})`);
+    const data = await res.json();
+    render(data);
+  } catch (err) {
+    document.getElementById("app").innerHTML =
+      `<p class="state-msg">⚠ ${err.message}</p>`;
+  }
+}
+
+loadCase();
+</script>
+</body>
+</html>

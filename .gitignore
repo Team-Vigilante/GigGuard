@@ -216,5 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-gigguard.db/
-gigguard.db/
+pdf_generator/output/
+app/db/gigguard.db
+*.db
+__pycache__/
