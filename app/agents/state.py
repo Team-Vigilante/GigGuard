@@ -1,6 +1,5 @@
 from typing import TypedDict, Optional
 
-
 class GigGuardState(TypedDict):
     phone: str
     message: str
