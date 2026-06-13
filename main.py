@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.api.health import router as health_router
 from app.api.webhook import router as webhook_router
+from app.api.dashboard import router as dashboard_router
 from app.config import APP_HOST, APP_PORT
 import logging
 
@@ -17,6 +18,7 @@ app = FastAPI(
 
 app.include_router(health_router)
 app.include_router(webhook_router)
+app.include_router(dashboard_router)
 
 if __name__ == "__main__":
     import uvicorn
