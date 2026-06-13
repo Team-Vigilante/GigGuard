@@ -30,10 +30,6 @@ Respond ONLY with a valid JSON object. No explanation, no markdown, no backticks
 
 
 def download_image(media_url: str) -> tuple[str, str]:
-    """
-    Downloads image from Twilio media URL.
-    Returns (base64_encoded_data, media_type)
-    """
     with httpx.Client() as http_client:
         response = http_client.get(
             media_url,
@@ -48,11 +44,7 @@ def download_image(media_url: str) -> tuple[str, str]:
 
 
 def extract_with_vision(image_data: str, media_type: str) -> dict:
-    """
-    Sends image to Gemini Vision and extracts structured case data.
-    """
     image_bytes = base64.b64decode(image_data)
-
     response = gemini_client.models.generate_content(
         model="gemini-1.5-flash",
         contents=[
@@ -60,17 +52,12 @@ def extract_with_vision(image_data: str, media_type: str) -> dict:
             EXTRACTION_PROMPT
         ]
     )
-
     raw = response.text.strip()
     raw = re.sub(r"```json|```", "", raw).strip()
     return json.loads(raw)
 
 
 def extract_from_text(message: str) -> dict:
-    """
-    Extracts case data from plain text message using Groq.
-    Handles Hindi, Kannada, Tamil, English.
-    """
     response = groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
@@ -81,19 +68,13 @@ def extract_from_text(message: str) -> dict:
         ],
         temperature=0.1
     )
-
     raw = response.choices[0].message.content.strip()
     raw = re.sub(r"```json|```", "", raw).strip()
     return json.loads(raw)
 
 
 def parser_node(state: GigGuardState) -> GigGuardState:
-    """
-    Agent 1 — Parser
-    Extracts structured case data from screenshot or text message.
-    """
     print(f"[parser_node] phone={state['phone']} | has_media={state['media_url'] is not None}")
-
     try:
         if state["media_url"]:
             print(f"[parser_node] downloading image from {state['media_url']}")
