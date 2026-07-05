@@ -236,7 +236,6 @@ Return your analysis as a strict JSON object."""
                 "dobara try karenge."
             )
         }
-
     except Exception as e:
         print(f"[researcher_node] error: {e}")
         legal_analysis = {

@@ -167,7 +167,6 @@ def drafter_node(state: Dict[str, Any]) -> Dict[str, Any]:
     Output:
         {"grievance_letter": {...}} — merged into GigGuardState
     """
-
     parsed_data = state.get("parsed_data", {})
     legal_analysis = state.get("legal_analysis", {})
     case_strength = legal_analysis.get("case_strength", "INSUFFICIENT_BASIS")
@@ -254,6 +253,9 @@ Generate both Hindi and English letters. Return as strict JSON."""
 
     except Exception as e:
         print(f"[drafter_node] error: {e}")
+        draft_result = {
+            "hindi_letter": "शिकायत पत्र बनाने में त्रुटि हुई।",
+            "english_letter": f"Error generating grievance letter: {str(e)}",
         draft_result = {
             "hindi_letter": "शिकायत पत्र बनाने में त्रुटि हुई।",
             "english_letter": f"Error generating grievance letter: {str(e)}",

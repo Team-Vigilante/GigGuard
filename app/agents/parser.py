@@ -212,7 +212,6 @@ def parser_node(state: GigGuardState) -> GigGuardState:
         # Handle new nested confidence format
         if isinstance(confidence, dict):
             confidence = confidence.get("overall", 0)
-
         if confidence < 0.75:
             return {
                 **state,

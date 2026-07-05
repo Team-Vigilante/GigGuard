@@ -1,4 +1,5 @@
 groq==1.4.0
 google-genai
 google-generativeai==0.8.6
-chromadblanggraph
+chromadb
+langgraph
