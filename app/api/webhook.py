@@ -1,37 +1,33 @@
-from fastapi import APIRouter, Form
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, Request, Response
 from twilio.twiml.messaging_response import MessagingResponse
-import logging
-from typing import Optional
+from app.router import handle_message
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/webhook/whatsapp", response_class=PlainTextResponse)
-async def receive_whatsapp(
-    From: str = Form(...),
-    Body: str = Form(...),
-    MediaUrl0: Optional[str] = Form(None),
-    MediaContentType0: Optional[str] = Form(None),
-    NumMedia: Optional[str] = Form("0")
-):
-    logger.info(f"Incoming message from {From}")
-    logger.info(f"Message body: {Body}")
-    logger.info(f"Media URL: {MediaUrl0}")
-    logger.info(f"Media type: {MediaContentType0}")
+
+@router.post("/webhook/whatsapp")
+async def receive_whatsapp(request: Request):
+    form_data = await request.form()
+
+    phone = form_data.get("From", "")
+    message = form_data.get("Body", "").strip()
+    media_url = form_data.get("MediaUrl0", None)
+    media_type = form_data.get("MediaContentType0", None)
 
     print("=" * 50)
-    print(f"FROM: {From}")
-    print(f"BODY: {Body}")
-    print(f"MEDIA URL: {MediaUrl0}")
-    print(f"MEDIA TYPE: {MediaContentType0}")
+    print(f"FROM: {phone}")
+    print(f"BODY: {message}")
+    print(f"MEDIA URL: {media_url}")
+    print(f"MEDIA TYPE: {media_type}")
     print("=" * 50)
 
-    response = MessagingResponse()
+    response_text = await handle_message(
+        phone=phone,
+        message=message,
+        media_url=media_url,
+        media_type=media_type
+    )
 
-    if MediaUrl0 and MediaContentType0 and MediaContentType0.startswith("image"):
-        response.message("Screenshot mil gayi. Processing kar raha hoon... thoda wait karo.")
-    else:
-        response.message("Namaste! Aapka message mila. Main aapki madad karunga.")
-
-    return PlainTextResponse(str(response), media_type="application/xml")
+    twiml = MessagingResponse()
+    twiml.message(response_text)
+    return Response(content=str(twiml), media_type="application/xml")

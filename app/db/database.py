@@ -307,10 +307,8 @@ def get_case(case_id: str) -> dict | None:
 def get_case_by_reference(reference_id: str) -> dict | None:
     """
     Retrieve a single case by its reference_id.
-
     Args:
         reference_id: Reference ID of the case (e.g. GG-2026-001).
-
     Returns:
         Case dict, or None if not found.
     """
@@ -322,7 +320,5 @@ def get_case_by_reference(reference_id: str) -> dict | None:
         return _row_to_dict(row)
     finally:
         conn.close()
-
-
 # ── Auto-initialize DB on import ──────────────────────────────────────────────
 _init_db()

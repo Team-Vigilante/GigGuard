@@ -1,8 +1,3 @@
-import json
-import os
-from typing import Dict, Any
-from agents.llm_utils import call_llm
-
 # Agent 3 — Drafter System Prompt
 # Owner: Person 2 (AI Agents + Prompt Engineering)
 # Used by: drafter_node() function
@@ -84,7 +79,7 @@ format:
 
 7. LEGAL BASIS (only if case_strength != INSUFFICIENT_BASIS)
    - For each violation in legal_analysis.violations:
-     "As per [source], [section]: [violation_description]"
+     "As per [law], [section]: [violation_description]"
    - Cite ONLY from legal_analysis.violations
    - If INSUFFICIENT_BASIS: replace this section with
      "This notice documents the incident for official record."
@@ -142,60 +137,3 @@ MANDATORY_DISCLAIMER = (
     "policy documents. For complex cases, consult a "
     "legal professional."
 )
-
-def drafter_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Agent 3: Drafter Node
-    Generates a formal grievance letter in Hindi and English based on the
-    worker's complaint and legal analysis.
-    
-    Args:
-        state: The current LangGraph state (GigGuardState), which must contain 
-               'parsed_data' and 'legal_analysis'.
-               
-    Returns:
-        A dict containing the 'grievance_letter' to update the state.
-    """
-    parsed_data = state.get("parsed_data", {})
-    legal_analysis = state.get("legal_analysis", {})
-    case_strength = legal_analysis.get("case_strength", "INSUFFICIENT_BASIS")
-    
-    user_prompt = f"""
-    Please generate the grievance letter based on the following case facts and legal analysis.
-    
-    CASE FACTS:
-    {json.dumps(parsed_data, indent=2)}
-    
-    LEGAL ANALYSIS:
-    {json.dumps(legal_analysis, indent=2)}
-    
-    CASE STRENGTH: {case_strength}
-    """
-    
-    response_text = call_llm(
-        system_prompt=DRAFTER_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        max_tokens=2048,
-        temperature=0.0
-    )
-    
-    try:
-        start_idx = response_text.find('{')
-        end_idx = response_text.rfind('}') + 1
-        json_str = response_text[start_idx:end_idx]
-        
-        draft_result = json.loads(json_str, strict=False)
-        
-        # Enforce the hardcoded disclaimer - never let the model change this
-        draft_result["disclaimer"] = MANDATORY_DISCLAIMER
-        
-    except (json.JSONDecodeError, IndexError, AttributeError) as e:
-        draft_result = {
-            "hindi_letter": "Error generating letter.",
-            "english_letter": f"Error generating letter: {str(e)}",
-            "demands": [],
-            "escalation_warning": "",
-            "disclaimer": MANDATORY_DISCLAIMER
-        }
-        
-    return {"grievance_letter": draft_result}

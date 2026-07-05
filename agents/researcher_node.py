@@ -1,151 +1,247 @@
+# Agent 2 — Legal Researcher System Prompt + Standalone Logic
+# Owner: Person 2 (AI Agents + Prompt Engineering)
+# This is the standalone reference module in the top-level agents/ directory.
+# The integrated version lives at app/agents/researcher_node.py.
+#
+# This module can be imported by:
+#   - pdf_generator/ for schema reference
+#   - tests/ for prompt testing
+#   - Any standalone demo scripts
+
 import json
-import os
-from typing import Dict, Any
-from agents.llm_utils import call_llm
-from agents.chromadb_query import build_case_facts_string, query_knowledge_base
+from typing import Dict, Any, List, Optional
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PERSON 4'S GROUNDING PROMPT — SLOTTED IN VERBATIM
-# SOURCE: origin/feature/knowledge-base:knowledge_base/grounding_prompt.txt
-# DO NOT MODIFY, WEAKEN, OR REMOVE ANY OF THESE RULES
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GROUNDING_PROMPT = """You are a legal research assistant for GigGuard, an AI advocate for gig workers in India.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RESEARCHER SYSTEM PROMPT — Full Anti-Hallucination RAG Prompt
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STRICT GROUNDING RULES — READ CAREFULLY BEFORE RESPONDING:
+RESEARCHER_SYSTEM_PROMPT = """
+You are the Legal Researcher Agent for GigGuard, a legal advocacy
+system for gig workers in India.
 
-1. You ONLY cite legal provisions that appear in the RETRIEVED CONTEXT provided below.
-   Never cite a law, section number, or case from your training data memory under any circumstances.
+Your job is to analyze a gig worker's case facts against ONLY the
+retrieved legal context provided below, and determine whether any
+laws or platform terms were violated.
 
-2. Every citation must include ALL THREE of the following:
-   - Source name (e.g. "Code on Social Security 2020")
-   - Section number (e.g. "Section 6")
-   - The exact retrieved text you are citing
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL RULES — NEVER VIOLATE THESE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-3. If the retrieved context does not contain relevant law for this case, output exactly:
-   INSUFFICIENT_LEGAL_BASIS
-   Do not attempt to fill the gap with general knowledge.
+RULE 1 — NO HALLUCINATION:
+You MUST NOT cite, reference, or mention ANY law, section, rule,
+act, or regulation that is NOT present in the RETRIEVED LEGAL
+CONTEXT below. If a law is not in the context, it does not exist
+for the purpose of this analysis. This is the single most important
+rule. Violating it makes the entire analysis legally dangerous.
 
-4. If you are uncertain whether a chunk is relevant to the specific facts of this case,
-   do not cite it. Mark it UNCERTAIN instead.
+RULE 2 — GROUNDING:
+Every violation you identify MUST include a direct quote
+("retrieved_text") from the retrieved context that supports it.
+If you cannot quote the exact text that supports a violation,
+do not include that violation.
 
-5. Case strength is determined ONLY by verified violations found in retrieved context:
-   STRONG:             3 or more violations with direct citations from retrieved context
-   MODERATE:           1 or 2 violations with direct citations from retrieved context
-   WEAK:               violations present but ambiguous or circumstantial
-   INSUFFICIENT_BASIS: no relevant law found in retrieved context for this specific case
+RULE 3 — HONEST ASSESSMENT:
+If the retrieved context does not contain any laws that clearly
+apply to the worker's situation, you MUST set case_strength to
+"INSUFFICIENT_BASIS". Do not stretch or misapply laws to make
+a case appear stronger than it is.
 
-6. You must output your response in this exact JSON structure:
-   {
-     "case_strength": "STRONG | MODERATE | WEAK | INSUFFICIENT_BASIS",
-     "confidence": 0.0 to 1.0,
-     "violations": [
-       {
-         "violation_description": "what was violated",
-         "source": "exact source name",
-         "section": "exact section number",
-         "retrieved_text": "exact text from retrieved context"
-       }
-     ],
-     "clarifying_question": "one question to ask worker if confidence < 0.6, else null",
-     "reasoning": "brief explanation of your assessment"
-   }
+RULE 4 — CASE STRENGTH CLASSIFICATION:
+  STRONG — 2 or more clear violations with direct textual support
+           from the retrieved context
+  MODERATE — 1 clear violation with direct support, or 2+ violations
+             with partial support
+  WEAK — Only indirect or tangential legal support found
+  INSUFFICIENT_BASIS — No applicable legal provisions found in the
+                       retrieved context, or the case facts are
+                       too vague to match any legal provision
 
-7. NEVER fabricate a law, act, section number, or case outcome.
-   If a worker mentions a law that does not appear in your retrieved context,
-   do not confirm or elaborate on it. Output INSUFFICIENT_LEGAL_BASIS."""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANALYSIS PROCESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step 1: Read the case facts carefully.
+Step 2: Read each retrieved legal chunk.
+Step 3: For each chunk, determine if the platform's action
+        violated the specific provision quoted.
+Step 4: Only include violations where you can directly quote
+        the supporting text from the context.
+Step 5: Classify case_strength based on the rules above.
+Step 6: Write a plain-language worker_message explaining what
+        you found in simple, empathetic Hindi-English (Hinglish)
+        that a worker would understand.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONFIDENCE SCORING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Assign a confidence score from 0.0 to 1.0:
+  1.0 — Every violation is directly supported by quoted text,
+        case facts are clear and complete
+  0.7 — Most violations are well-supported, minor ambiguity
+        in case facts
+  0.4 — Some violations are only partially supported, or
+        case facts are vague
+  0.1 — Very weak support, mostly inference
+  0.0 — No legal basis found (INSUFFICIENT_BASIS)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EMPTY CONTEXT HANDLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+If the RETRIEVED LEGAL CONTEXT is empty, contains no documents,
+or says "No legal context retrieved":
+  - Set violations to an empty list []
+  - Set case_strength to "INSUFFICIENT_BASIS"
+  - Set confidence to 0.0
+  - Write a helpful worker_message explaining that no relevant
+    legal provisions were found but the case has been documented
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT FORMAT — STRICT JSON ONLY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Return ONLY a valid JSON object. No explanations. No prose.
+No markdown. No code blocks. Nothing outside the JSON.
+
+{
+  "violations": [
+    {
+      "law": "Full name of the law or agreement",
+      "section": "Specific section or rule number",
+      "retrieved_text": "EXACT quote from the retrieved context",
+      "violation_description": "How the platform violated this provision based on the case facts"
+    }
+  ],
+  "case_strength": "STRONG" | "MODERATE" | "WEAK" | "INSUFFICIENT_BASIS",
+  "confidence": float between 0.0 and 1.0,
+  "worker_message": "A plain language explanation for the worker in simple Hinglish"
+}
+"""
 
 
-def researcher_node(state: Dict[str, Any]) -> Dict[str, Any]:
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# OUTPUT SCHEMA — For LangGraph integration reference
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LEGAL_ANALYSIS_SCHEMA = {
+    "violations": [
+        {
+            "law": "str — Full name of the law or agreement",
+            "section": "str — Specific section or rule number",
+            "retrieved_text": "str — EXACT quote from retrieved context",
+            "violation_description": "str — How platform violated this"
+        }
+    ],
+    "case_strength": "STRONG | MODERATE | WEAK | INSUFFICIENT_BASIS",
+    "confidence": "float — 0.0 to 1.0",
+    "worker_message": "str — Plain language explanation for worker"
+}
+
+
+def build_researcher_messages(
+    parsed_data: dict,
+    retrieved_chunks: list,
+    chunk_count: int
+) -> list:
     """
-    Agent 2: Legal Researcher Node
-
-    Uses RAG (Retrieval-Augmented Generation) to find relevant legal
-    provisions from ChromaDB and analyzes the worker's case facts
-    strictly against those provisions.
-
-    Person 4's grounding prompt enforces anti-hallucination rules.
-    The model may ONLY cite laws present in the retrieved context.
+    Build the system + user messages for the researcher LLM call.
 
     Args:
-        state: The current LangGraph state (GigGuardState).
-               Must contain 'parsed_data' (dict) with extracted
-               complaint facts from Agent 1 (Parser).
+        parsed_data:      The parsed_data dict from Agent 1 (Parser)
+        retrieved_chunks: List of dicts from ChromaDB query
+        chunk_count:      Number of chunks retrieved
 
     Returns:
-        A dict with 'legal_analysis' key to update the state.
-        Output schema matches Person 4's confidence_gate_rules.py:
-        {
-            "case_strength": "STRONG|MODERATE|WEAK|INSUFFICIENT_BASIS",
-            "confidence": float (0.0 to 1.0),
-            "violations": [
-                {
-                    "violation_description": str,
-                    "source": str,
-                    "section": str,
-                    "retrieved_text": str
-                }
-            ],
-            "clarifying_question": str or null,
-            "reasoning": str
-        }
+        List of message dicts for the LLM API call:
+        [{"role": "system", "content": ...}, {"role": "user", "content": ...}]
     """
-    parsed_data = state.get("parsed_data", {})
+    context_str = json.dumps(retrieved_chunks, indent=2)
 
-    # 1. Build query string from parsed case facts
-    case_facts_str = build_case_facts_string(parsed_data)
+    user_prompt = f"""Analyze the following gig worker's case based ONLY on the
+retrieved legal context. Follow every rule in your system prompt.
 
-    # 2. Call ChromaDB query function
-    retrieved_chunks = query_knowledge_base(case_facts_str, n_results=5)
+CASE FACTS:
+{json.dumps(parsed_data, indent=2)}
 
-    # 3. Format retrieved chunks for the grounding prompt
-    #    Each chunk includes: text, source, section, relevance_score
-    chunks_for_prompt = ""
-    for i, chunk in enumerate(retrieved_chunks, 1):
-        chunks_for_prompt += (
-            f"--- Chunk {i} ---\n"
-            f"Source: {chunk.get('source', 'unknown')}\n"
-            f"Section: {chunk.get('section', 'unknown')}\n"
-            f"Text: {chunk.get('text', '')}\n\n"
+RETRIEVED LEGAL CONTEXT ({chunk_count} chunks):
+{context_str}
+
+Return your analysis as a strict JSON object."""
+
+    return [
+        {"role": "system", "content": RESEARCHER_SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt}
+    ]
+
+
+def validate_legal_analysis(analysis: dict) -> dict:
+    """
+    Validate and sanitize the legal analysis output from the LLM.
+    Ensures all required fields exist and have valid values.
+
+    Args:
+        analysis: Raw parsed JSON from LLM response
+
+    Returns:
+        Validated and sanitized legal analysis dict
+    """
+    valid_strengths = {"STRONG", "MODERATE", "WEAK", "INSUFFICIENT_BASIS"}
+
+    # Ensure violations is a list
+    if not isinstance(analysis.get("violations"), list):
+        analysis["violations"] = []
+
+    # Validate each violation has required fields
+    valid_violations = []
+    for v in analysis["violations"]:
+        if isinstance(v, dict) and all(
+            k in v for k in ("law", "section", "violation_description")
+        ):
+            if "retrieved_text" not in v:
+                v["retrieved_text"] = ""
+            valid_violations.append(v)
+    analysis["violations"] = valid_violations
+
+    # Validate case_strength
+    if analysis.get("case_strength") not in valid_strengths:
+        analysis["case_strength"] = "WEAK"
+
+    # Validate confidence
+    try:
+        analysis["confidence"] = float(analysis.get("confidence", 0.0))
+        analysis["confidence"] = max(0.0, min(1.0, analysis["confidence"]))
+    except (TypeError, ValueError):
+        analysis["confidence"] = 0.0
+
+    # Ensure worker_message exists
+    if not analysis.get("worker_message"):
+        analysis["worker_message"] = (
+            "Aapke case ka analysis ho gaya hai. "
+            "Kripya aage ke steps ke liye intezar karein."
         )
 
-    if not chunks_for_prompt:
-        chunks_for_prompt = "[NO RELEVANT LEGAL CONTEXT RETRIEVED]"
+    return analysis
 
-    # 4. Build the full system prompt with Person 4's grounding rules
-    #    The grounding prompt expects {retrieved_chunks} and {case_facts}
-    #    to be filled in — we inject them here
-    full_prompt = GROUNDING_PROMPT.replace(
-        "{retrieved_chunks}", chunks_for_prompt
-    ).replace(
-        "{case_facts}", case_facts_str
+
+def make_insufficient_basis_response(reason: str = "") -> dict:
+    """
+    Return a standard INSUFFICIENT_BASIS response.
+
+    Args:
+        reason: Optional reason string for the worker message
+
+    Returns:
+        Legal analysis dict with INSUFFICIENT_BASIS
+    """
+    message = (
+        "Aapke case mein applicable legal provisions nahi mil sake. "
+        "Aapka case document ho gaya hai."
     )
+    if reason:
+        message = reason
 
-    response_text = call_llm(
-        system_prompt=full_prompt,
-        user_prompt=(
-            "Analyze the case facts against the retrieved legal "
-            "context. Follow the grounding rules exactly. Return "
-            "only the JSON output."
-        ),
-        max_tokens=1500,
-        temperature=0.0
-    )
-
-    try:
-        start_idx = response_text.find('{')
-        end_idx = response_text.rfind('}') + 1
-        json_str = response_text[start_idx:end_idx]
-
-        legal_analysis = json.loads(json_str, strict=False)
-
-    except (json.JSONDecodeError, IndexError, AttributeError) as e:
-        legal_analysis = {
-            "violations": [],
-            "case_strength": "INSUFFICIENT_BASIS",
-            "confidence": 0.0,
-            "clarifying_question": None,
-            "reasoning": f"Error during legal analysis: {str(e)}"
-        }
-
-    return {"legal_analysis": legal_analysis}
+    return {
+        "violations": [],
+        "case_strength": "INSUFFICIENT_BASIS",
+        "confidence": 0.0,
+        "worker_message": message
+    }

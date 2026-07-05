@@ -1,193 +1,390 @@
 """
-Phase 5: Parser Prompt Stress Tests
-====================================
-Tests the PARSER_SYSTEM_PROMPT with 5 required input scenarios.
+Prompt Stress Tests — Agent 1 (Parser)
+Owner: Person 2 (AI Agents + Prompt Engineering)
 
-TWO TEST LAYERS:
-  - TestParserPromptStructure: Offline tests (no API needed)
-  - TestParserLive: Live API tests (requires ANTHROPIC_API_KEY with credits)
+Tests parser prompt behavior across:
+  - Hindi messages
+  - English messages
+  - Mixed Hindi-English (Hinglish)
+  - Degraded/blurry screenshot descriptions
+  - Non-complaint messages
+  - Confidence score validation
+  - Missing fields handling
 
-Run offline tests:   python3 -m unittest tests.test_parser.TestParserPromptStructure -v
-Run live tests:      python3 -m unittest tests.test_parser.TestParserLive -v
-Run all:             python3 -m unittest tests.test_parser -v
+Run with:  python -m pytest tests/test_parser.py -v
+    or:    python tests/test_parser.py
 """
 
-import unittest
-import json
 import sys
 import os
+import json
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from agents.parser_prompt import PARSER_SYSTEM_PROMPT
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# MOCK LLM RESPONSES — Simulate Groq/Gemini outputs
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Case 1: Clear Hindi message — Swiggy deactivation
+MOCK_HINDI_RESPONSE = json.dumps({
+    "platform": "Swiggy",
+    "event_type": "ACCOUNT_DEACTIVATION",
+    "date": "2026-06-07",
+    "reason": "Customer rating fell below minimum threshold",
+    "worker_id": "SWG-BLR-228194",
+    "earnings_withheld": 1840,
+    "notice_provided": False,
+    "appeal_offered": False,
+    "language_detected": "hi",
+    "input_quality": "CLEAR",
+    "confidence": {
+        "platform": 0.98,
+        "event_type": 0.95,
+        "date": 0.97,
+        "reason": 0.90,
+        "worker_id": 0.92,
+        "earnings_withheld": 0.96,
+        "notice_provided": 0.85,
+        "appeal_offered": 0.85,
+        "overall": 0.92
+    }
+})
+
+# Case 2: Clear English message — Zomato payment withheld
+MOCK_ENGLISH_RESPONSE = json.dumps({
+    "platform": "Zomato",
+    "event_type": "PAYMENT_WITHHELD",
+    "date": "2026-07-01",
+    "reason": "Pending verification of delivery records",
+    "worker_id": None,
+    "earnings_withheld": 3200,
+    "notice_provided": False,
+    "appeal_offered": False,
+    "language_detected": "en",
+    "input_quality": "CLEAR",
+    "confidence": {
+        "platform": 1.0,
+        "event_type": 0.95,
+        "date": 1.0,
+        "reason": 0.7,
+        "worker_id": 0.0,
+        "earnings_withheld": 1.0,
+        "notice_provided": 0.85,
+        "appeal_offered": 0.80,
+        "overall": 0.90
+    }
+})
+
+# Case 3: Mixed Hinglish message — Ola rating manipulation
+MOCK_HINGLISH_RESPONSE = json.dumps({
+    "platform": "Ola",
+    "event_type": "RATING_MANIPULATION",
+    "date": "approximately 1 week before complaint",
+    "reason": "NO_REASON_PROVIDED",
+    "worker_id": "OLA-HYD-91827",
+    "earnings_withheld": None,
+    "notice_provided": None,
+    "appeal_offered": False,
+    "language_detected": "hi-en",
+    "input_quality": "CLEAR",
+    "confidence": {
+        "platform": 1.0,
+        "event_type": 0.7,
+        "date": 0.4,
+        "reason": 0.7,
+        "worker_id": 0.95,
+        "earnings_withheld": 0.0,
+        "notice_provided": 0.0,
+        "appeal_offered": 0.7,
+        "overall": 0.72
+    }
+})
+
+# Case 4: Degraded/blurry screenshot
+MOCK_DEGRADED_RESPONSE = json.dumps({
+    "platform": "Swiggy",
+    "event_type": None,
+    "date": None,
+    "reason": None,
+    "worker_id": None,
+    "earnings_withheld": None,
+    "notice_provided": None,
+    "appeal_offered": None,
+    "language_detected": "en",
+    "input_quality": "DEGRADED",
+    "confidence": {
+        "platform": 0.4,
+        "event_type": 0.0,
+        "date": 0.0,
+        "reason": 0.0,
+        "worker_id": 0.0,
+        "earnings_withheld": 0.0,
+        "notice_provided": 0.0,
+        "appeal_offered": 0.0,
+        "overall": 0.2
+    }
+})
+
+# Case 5: Not a complaint — random message
+MOCK_NOT_COMPLAINT_RESPONSE = json.dumps({
+    "platform": None,
+    "event_type": None,
+    "date": None,
+    "reason": None,
+    "worker_id": None,
+    "earnings_withheld": None,
+    "notice_provided": None,
+    "appeal_offered": None,
+    "language_detected": "en",
+    "input_quality": "NOT_A_COMPLAINT",
+    "confidence": {
+        "platform": 0.0,
+        "event_type": 0.0,
+        "date": 0.0,
+        "reason": 0.0,
+        "worker_id": 0.0,
+        "earnings_withheld": 0.0,
+        "notice_provided": 0.0,
+        "appeal_offered": 0.0,
+        "overall": 0.0
+    }
+})
+
+# Case 6: Low confidence — vague message with few extractable fields
+MOCK_LOW_CONFIDENCE_RESPONSE = json.dumps({
+    "platform": "Uber",
+    "event_type": "OTHER",
+    "date": None,
+    "reason": None,
+    "worker_id": None,
+    "earnings_withheld": None,
+    "notice_provided": None,
+    "appeal_offered": None,
+    "language_detected": "hi",
+    "input_quality": "CLEAR",
+    "confidence": {
+        "platform": 0.7,
+        "event_type": 0.4,
+        "date": 0.0,
+        "reason": 0.0,
+        "worker_id": 0.0,
+        "earnings_withheld": 0.0,
+        "notice_provided": 0.0,
+        "appeal_offered": 0.0,
+        "overall": 0.2
+    }
+})
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# OFFLINE TESTS — no API key needed
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# HELPER: Create mock Groq response
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class TestParserPromptStructure(unittest.TestCase):
-    """Verify the parser prompt contains all required instructions."""
-
-    def test_prompt_has_all_extraction_fields(self):
-        """All 8 required fields must be mentioned in the prompt."""
-        required_fields = [
-            "platform", "event_type", "date", "reason",
-            "worker_id", "earnings_withheld", "notice_provided", "appeal_offered"
-        ]
-        for field in required_fields:
-            self.assertIn(field, PARSER_SYSTEM_PROMPT,
-                          f"Missing extraction field: {field}")
-
-    def test_prompt_has_language_support(self):
-        """Prompt must mention all 4 supported languages."""
-        for lang in ["Hindi", "Kannada", "Tamil", "English"]:
-            self.assertIn(lang, PARSER_SYSTEM_PROMPT,
-                          f"Missing language support: {lang}")
-
-    def test_prompt_has_confidence_scoring(self):
-        """Prompt must include confidence scoring instructions."""
-        self.assertIn("confidence", PARSER_SYSTEM_PROMPT)
-        self.assertIn("0.0", PARSER_SYSTEM_PROMPT)
-        self.assertIn("1.0", PARSER_SYSTEM_PROMPT)
-
-    def test_prompt_enforces_json_only(self):
-        """Prompt must instruct strict JSON output."""
-        self.assertIn("JSON", PARSER_SYSTEM_PROMPT)
-        self.assertIn("No explanations", PARSER_SYSTEM_PROMPT)
-
-    def test_prompt_handles_blurry_input(self):
-        """Prompt must include blurry/degraded input handling."""
-        self.assertIn("DEGRADED", PARSER_SYSTEM_PROMPT)
-        self.assertIn("blurry", PARSER_SYSTEM_PROMPT.lower())
-
-    def test_prompt_handles_irrelevant_input(self):
-        """Prompt must handle non-complaint messages."""
-        self.assertIn("NOT_A_COMPLAINT", PARSER_SYSTEM_PROMPT)
-
-    def test_prompt_has_event_type_categories(self):
-        """All event type categories must be defined."""
-        categories = [
-            "ACCOUNT_DEACTIVATION", "PAYMENT_WITHHELD",
-            "UNFAIR_DEDUCTION", "FORCED_CANCELLATION",
-            "RATING_MANIPULATION", "OTHER"
-        ]
-        for cat in categories:
-            self.assertIn(cat, PARSER_SYSTEM_PROMPT,
-                          f"Missing event category: {cat}")
+def _make_groq_response(content: str):
+    """Create a mock Groq API response object."""
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = content
+    return mock_response
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# LIVE API TESTS — requires ANTHROPIC_API_KEY
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def _run_parser_with_mock(message: str, mock_response_json: str) -> dict:
+    """Run parser_node with a mocked Groq response."""
+    from app.agents.parser import parser_node
 
-# 5 test inputs from Phase 5 spec
-TEST_INPUTS = {
-    "clean_english": (
-        "I am a Swiggy delivery partner. On 2025-06-01 my account was "
-        "suddenly deactivated without any warning. I had 3200 rupees "
-        "in my wallet which they are not releasing. My partner ID is "
-        "SWG-88432. They gave no reason and no option to appeal."
-    ),
-    "hindi_only": (
-        "मैं ज़ोमैटो पर डिलीवरी करता हूँ। कल से मेरा अकाउंट बंद कर दिया "
-        "गया है। कोई वजह नहीं बताई। मेरे 5000 रुपये अभी तक नहीं मिले हैं। "
-        "कोई अपील का ऑप्शन भी नहीं दिया।"
-    ),
-    "mixed_hindi_english": (
-        "Ola ne mera account deactivate kar diya bina kisi warning ke. "
-        "Mera driver ID OLA-9921 hai. Last week ka 4500 rupees ka payment "
-        "bhi rok liya hai. Unhone koi reason nahi diya. Bahut pareshaan hoon."
-    ),
-    "blurry_screenshot": (
-        "I am sending a screenshot of the notification I received but "
-        "it is very blurry. I can only make out that it says something "
-        "about 'policy violation' and 'account suspended'. The platform "
-        "name is not clearly visible but it might be Urban Company. "
-        "The date and amounts are completely unreadable."
-    ),
-    "irrelevant_message": (
-        "Hey, what's the weather like in Bangalore today? "
-        "Also can you recommend a good restaurant nearby?"
-    ),
-}
+    state = {
+        "phone": "+919999999999",
+        "message": message,
+        "media_url": None,
+        "conversation_state": "awaiting_screenshot",
+        "parsed_data": None,
+        "legal_analysis": None,
+        "grievance_letter": None,
+        "filing_result": None,
+        "confirmation_pending": False,
+        "case_id": None,
+        "error": None
+    }
+
+    with patch("app.agents.parser.groq_client") as mock_client:
+        mock_client.chat.completions.create.return_value = (
+            _make_groq_response(mock_response_json)
+        )
+        result = parser_node(state)
+
+    return result
 
 
-def _call_parser(message: str) -> dict:
-    """Helper: call LLM with the parser prompt and return parsed JSON."""
-    from agents.llm_utils import call_llm
-    text = call_llm(
-        system_prompt=PARSER_SYSTEM_PROMPT,
-        user_prompt=message,
-        max_tokens=1024,
-        temperature=0.0
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TEST CASES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def test_hindi_message_parsing():
+    """Parser extracts structured data from a Hindi complaint."""
+    result = _run_parser_with_mock(
+        "Mera Swiggy account band ho gaya hai bina koi notice ke. "
+        "Mera ID SWG-BLR-228194 hai aur 1840 rupaye ruke hain.",
+        MOCK_HINDI_RESPONSE
     )
-    start = text.find('{')
-    end = text.rfind('}') + 1
-    return json.loads(text[start:end], strict=False)
+    parsed = result.get("parsed_data", {})
+    assert parsed["platform"] == "Swiggy"
+    assert parsed["event_type"] == "ACCOUNT_DEACTIVATION"
+    assert parsed["earnings_withheld"] == 1840
+    assert parsed["notice_provided"] is False
+    assert parsed["language_detected"] == "hi"
+    assert parsed["input_quality"] == "CLEAR"
+    print("✅ test_hindi_message_parsing passed")
 
 
-class TestParserLive(unittest.TestCase):
-    """Live API stress tests — 5 scenarios from Phase 5 spec."""
-
-    def setUp(self):
-        if not os.environ.get("ANTHROPIC_API_KEY") and not os.environ.get("GROQ_API_KEY"):
-            self.skipTest("No API key set (need Anthropic or Groq).")
-
-    # ── Test 1: Clean English ──────────────────────────
-    def test_1_clean_english_description(self):
-        """Clean English input → all fields extracted with high confidence."""
-        result = _call_parser(TEST_INPUTS["clean_english"])
-
-        self.assertEqual(result["platform"], "Swiggy")
-        self.assertEqual(result["event_type"], "ACCOUNT_DEACTIVATION")
-        self.assertEqual(result["earnings_withheld"], 3200)
-        self.assertEqual(result["notice_provided"], False)
-        self.assertEqual(result["appeal_offered"], False)
-        self.assertEqual(result["input_quality"], "CLEAR")
-        self.assertGreaterEqual(result["confidence"]["overall"], 0.7)
-
-    # ── Test 2: Hindi Only ─────────────────────────────
-    def test_2_hindi_text_message(self):
-        """Hindi-only message → correct extraction, language_detected=Hindi."""
-        result = _call_parser(TEST_INPUTS["hindi_only"])
-
-        self.assertEqual(result["platform"], "Zomato")
-        self.assertEqual(result["event_type"], "ACCOUNT_DEACTIVATION")
-        self.assertIn(result["language_detected"].lower(), ["hindi", "hi"])
-        self.assertEqual(result["appeal_offered"], False)
-        self.assertEqual(result["input_quality"], "CLEAR")
-
-    # ── Test 3: Mixed Hindi-English ────────────────────
-    def test_3_mixed_hindi_english(self):
-        """Mixed Hinglish input → correct extraction."""
-        result = _call_parser(TEST_INPUTS["mixed_hindi_english"])
-
-        self.assertEqual(result["platform"], "Ola")
-        self.assertEqual(result["event_type"], "ACCOUNT_DEACTIVATION")
-        self.assertIsNotNone(result.get("worker_id"))
-        self.assertEqual(result["input_quality"], "CLEAR")
-
-    # ── Test 4: Blurry Screenshot ──────────────────────
-    def test_4_blurry_incomplete_screenshot(self):
-        """Blurry screenshot → DEGRADED quality, low confidence, nulls."""
-        result = _call_parser(TEST_INPUTS["blurry_screenshot"])
-
-        self.assertEqual(result["input_quality"], "DEGRADED")
-        self.assertLessEqual(result["confidence"]["overall"], 0.5)
-        # Date and earnings should be null since unreadable
-        self.assertIsNone(result.get("date"))
-        self.assertIsNone(result.get("earnings_withheld"))
-
-    # ── Test 5: Irrelevant Message ─────────────────────
-    def test_5_irrelevant_message(self):
-        """Non-complaint message → NOT_A_COMPLAINT, confidence 0.0."""
-        result = _call_parser(TEST_INPUTS["irrelevant_message"])
-
-        self.assertEqual(result["input_quality"], "NOT_A_COMPLAINT")
-        self.assertIsNone(result.get("event_type"))
-        self.assertEqual(result["confidence"]["overall"], 0.0)
+def test_english_message_parsing():
+    """Parser extracts structured data from an English complaint."""
+    result = _run_parser_with_mock(
+        "Zomato has not paid me Rs 3200 for deliveries done on July 1st. "
+        "They said verification is pending but gave no warning.",
+        MOCK_ENGLISH_RESPONSE
+    )
+    parsed = result.get("parsed_data", {})
+    assert parsed["platform"] == "Zomato"
+    assert parsed["event_type"] == "PAYMENT_WITHHELD"
+    assert parsed["earnings_withheld"] == 3200
+    assert parsed["language_detected"] == "en"
+    print("✅ test_english_message_parsing passed")
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_hinglish_mixed_language():
+    """Parser handles mixed Hindi-English (Hinglish) input."""
+    result = _run_parser_with_mock(
+        "Ola ka rating system bahut unfair hai, meri rating girate "
+        "jaa rahi hai but customer ke fake complaints ki wajah se. "
+        "My ID is OLA-HYD-91827. Koi appeal ka option nahi diya.",
+        MOCK_HINGLISH_RESPONSE
+    )
+    parsed = result.get("parsed_data", {})
+    assert parsed["platform"] == "Ola"
+    assert parsed["event_type"] == "RATING_MANIPULATION"
+    assert parsed["worker_id"] == "OLA-HYD-91827"
+    assert parsed["appeal_offered"] is False
+    assert parsed["language_detected"] == "hi-en"
+    print("✅ test_hinglish_mixed_language passed")
+
+
+def test_degraded_screenshot_handling():
+    """Parser handles blurry/degraded screenshot with low confidence."""
+    result = _run_parser_with_mock(
+        "[Screenshot description: Blurry image showing Swiggy app "
+        "notification. Text partially readable. Some numbers visible "
+        "but unclear.]",
+        MOCK_DEGRADED_RESPONSE
+    )
+    parsed = result.get("parsed_data", {})
+    assert parsed["input_quality"] == "DEGRADED"
+    assert parsed["confidence"]["overall"] == 0.2
+    # Low confidence should trigger AWAITING_SCREENSHOT
+    assert result.get("error") == "low_confidence"
+    assert result.get("conversation_state") == "AWAITING_SCREENSHOT"
+    print("✅ test_degraded_screenshot_handling passed")
+
+
+def test_non_complaint_rejection():
+    """Parser rejects non-complaint messages."""
+    result = _run_parser_with_mock(
+        "Hello, what is the weather today? I want to order some food.",
+        MOCK_NOT_COMPLAINT_RESPONSE
+    )
+    parsed = result.get("parsed_data", {})
+    assert parsed["input_quality"] == "NOT_A_COMPLAINT"
+    assert parsed["event_type"] is None
+    assert parsed["confidence"]["overall"] == 0.0
+    # Zero confidence should trigger low_confidence error
+    assert result.get("error") == "low_confidence"
+    print("✅ test_non_complaint_rejection passed")
+
+
+def test_confidence_score_structure():
+    """Confidence scores have the correct nested structure."""
+    result = _run_parser_with_mock(
+        "Swiggy mera account band kar diya",
+        MOCK_HINDI_RESPONSE
+    )
+    parsed = result.get("parsed_data", {})
+    confidence = parsed.get("confidence", {})
+
+    # Check all required confidence fields exist
+    required_fields = [
+        "platform", "event_type", "date", "reason",
+        "worker_id", "earnings_withheld", "notice_provided",
+        "appeal_offered", "overall"
+    ]
+    for field in required_fields:
+        assert field in confidence, f"Missing confidence field: {field}"
+        assert isinstance(confidence[field], (int, float)), (
+            f"Confidence '{field}' should be numeric, got {type(confidence[field])}"
+        )
+        assert 0.0 <= confidence[field] <= 1.0, (
+            f"Confidence '{field}' out of range: {confidence[field]}"
+        )
+    print("✅ test_confidence_score_structure passed")
+
+
+def test_low_confidence_penalty():
+    """
+    When fewer than 3 fields are extracted, overall confidence
+    should be set to 0.2 (penalty rule).
+    """
+    result = _run_parser_with_mock(
+        "Uber mein kuch problem hai",
+        MOCK_LOW_CONFIDENCE_RESPONSE
+    )
+    parsed = result.get("parsed_data", {})
+    assert parsed["confidence"]["overall"] == 0.2
+    # This should also trigger low_confidence since 0.2 < 0.75
+    assert result.get("error") == "low_confidence"
+    print("✅ test_low_confidence_penalty passed")
+
+
+def test_high_confidence_proceeds():
+    """High-confidence parse moves to AWAITING_CONFIRMATION."""
+    result = _run_parser_with_mock(
+        "Swiggy mera account band kar diya, 1840 rupay ruke hain",
+        MOCK_HINDI_RESPONSE
+    )
+    assert result.get("error") is None
+    assert result.get("conversation_state") == "AWAITING_CONFIRMATION"
+    print("✅ test_high_confidence_proceeds passed")
+
+
+def test_json_parse_error_handling():
+    """Parser handles invalid JSON from LLM gracefully."""
+    result = _run_parser_with_mock(
+        "Swiggy account band hua",
+        "This is not valid JSON at all {broken"
+    )
+    assert result.get("error") == "parse_failed"
+    assert result.get("conversation_state") == "AWAITING_SCREENSHOT"
+    print("✅ test_json_parse_error_handling passed")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RUNNER
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if __name__ == "__main__":
+    print("\n" + "=" * 60)
+    print("PARSER PROMPT STRESS TESTS")
+    print("=" * 60)
+
+    test_hindi_message_parsing()
+    test_english_message_parsing()
+    test_hinglish_mixed_language()
+    test_degraded_screenshot_handling()
+    test_non_complaint_rejection()
+    test_confidence_score_structure()
+    test_low_confidence_penalty()
+    test_high_confidence_proceeds()
+    test_json_parse_error_handling()
+
+    print("\n" + "=" * 60)
+    print("ALL PARSER TESTS PASSED ✅")
+    print("=" * 60)

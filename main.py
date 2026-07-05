@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.health import router as health_router
 from app.api.webhook import router as webhook_router
 from app.api.dashboard import router as dashboard_router
@@ -11,8 +12,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-
-from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="GigGuard API",
